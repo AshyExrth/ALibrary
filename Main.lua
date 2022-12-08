@@ -1,9 +1,9 @@
 local Library = {}
 
 Library.Themes = {
-	
+
 	DefaultDark = {
-		
+
 		MainBackground = Color3.fromRGB(56, 56, 56),
 		SecondaryBackground = Color3.fromRGB(62, 62, 62),
 		MainText = Color3.fromRGB(255, 255, 255),
@@ -16,10 +16,10 @@ Library.Themes = {
 		InputText = Color3.fromRGB(255, 255, 255),
 		InputBorder = Color3.fromRGB(61, 61, 61),
 		FontFace = Enum.Font.Jura
-		
+
 	},
 	DefaultLight = {
-		
+
 		MainBackground = Color3.fromRGB(235, 231, 231),
 		SecondaryBackground = Color3.fromRGB(198, 198, 198),
 		MainText = Color3.fromRGB(38, 38, 38),
@@ -32,10 +32,10 @@ Library.Themes = {
 		InputText = Color3.fromRGB(42, 42, 42),
 		InputBorder = Color3.fromRGB(212, 212, 212),
 		FontFace = Enum.Font.Jura
-		
+
 	},
 	Cream = {
-		
+
 		MainBackground = Color3.fromRGB(255, 234, 180),
 		SecondaryBackground = Color3.fromRGB(190, 176, 144),
 		MainText = Color3.fromRGB(97, 91, 68),
@@ -48,19 +48,27 @@ Library.Themes = {
 		InputText = Color3.fromRGB(255, 228, 194),
 		InputBorder = Color3.fromRGB(79, 60, 49),
 		FontFace = Enum.Font.FredokaOne
-		
+
 	}
-	
+
+}
+
+local TypeValues = {
+	Button = "Text",
+	Toggle = "Value",
+	Input = "Content",
+	TextLabel = "Text",
+	ImageLabel = "Text"
 }
 
 local CreateObjects = {}
 
 local function GetKey(Table : {any}, Index : number)
 	local Iterations = 0
-	
+
 	for Key, Value in pairs(Table) do
 		Iterations += 1
-		
+
 		if Iterations == Index then
 			return Key
 		end
@@ -74,42 +82,85 @@ local function ObjectHasProperty(Object : Instance, PropertyName : string)
 end
 
 function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
+	local Mouse = game.Players.LocalPlayer:GetMouse()
+	local Mouse1Down = false
+
+	Mouse.Button1Down:Connect(function()
+		Mouse1Down = true
+	end)
+	Mouse.Button1Up:Connect(function()
+		Mouse1Down = false
+	end)
+
 	Parent = Parent or game.CoreGui
 	local Gui = {}
-	
+
 	Gui.ScreenGui = Instance.new("ScreenGui")
 	Gui.UI = CreateObjects.CreateMainGui(GuiName)
-	
+
 	Gui.ScreenGui.Name = GuiName
 	Gui.ScreenGui.Parent = Parent
 	Gui.UI.Parent = Gui.ScreenGui
 	Gui.Name = GuiName
-	
+
 	Gui.Pages = {}
-	
+	Gui.TakenItemIds = {}
+
 	Gui.CurrentPage = nil
 	Gui.Theme = Theme
-	
+
 	local NotificationsUi = Parent:FindFirstChild("AL_Notifs") or Instance.new("ScreenGui")
 	NotificationsUi.Name = "AL_Notifs"
 	NotificationsUi.Parent = Parent
-	
+
 	if not NotificationsUi:FindFirstChild("Notifications") then
 		CreateObjects.CreateNotificationHolder().Parent = NotificationsUi
 	end
 	
+	Gui.UI.ExitButton.Activated:Connect(function()
+		Gui.ScreenGui:Destroy()
+	end)
+	
+	Gui.HandleDrag = function(Object : GuiObject, Target : GuiObject?)
+		Target = Target or Object
+		
+		local InUI = false
+		Object.MouseEnter:Connect(function()
+			InUI = true
+		end)
+		Object.MouseLeave:Connect(function()
+			InUI = false
+		end)
+
+		Mouse.Button1Down:Connect(function()
+			Mouse1Down = true
+			if InUI and Object:GetAttribute("Draggable") then
+				local LastMousePosition = Vector2.new(Mouse.X, Mouse.Y)
+				local LastGuiPosition = Object.Position
+				
+				while Mouse1Down and Object:GetAttribute("Draggable") do
+					Target.Position += UDim2.new(0, (Mouse.X - LastMousePosition.X), 0, (Mouse.Y - LastMousePosition.Y))
+					LastGuiPosition = Target.Position
+					LastMousePosition = Vector2.new(Mouse.X, Mouse.Y)
+					
+					game:GetService("RunService").RenderStepped:Wait()
+				end
+			end
+		end)
+	end
+
 	Gui.Notify = function(Title : string, Description : string, Duration : number?)
 		Duration = Duration or #Title / 2
-		
+
 		local Notification = CreateObjects.CreateNotification()
 		Notification.GuiName.Text = "From: " .. GuiName
 		Notification.Title.Text = Title
 		Notification.Description.Text = Description
-		
+
 		Notification.Parent = NotificationsUi
-		
+
 		Gui.ApplyTheme(Gui.Theme, Notification)
-		
+
 		task.spawn(function()
 			Notification.GroupTransparency = 1
 			game:GetService("TweenService"):Create(Notification, TweenInfo.new(0.5), {GroupTransparency = 0}):Play()
@@ -119,83 +170,90 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 			Notification:Destroy()
 		end)
 	end
-	
+
 	Gui.CreatePage = function(PageName : string)
 		local Page = {}
 		Gui.Pages[PageName] = Page
-		
+
 		Page.Name = PageName
 		Page.Button = CreateObjects.CreatePage(PageName)
 		Page.Button.Parent = Gui.UI.PageSelection.PageScroller
-		
+
 		Page.Button.Text = PageName
 		Page.Button.Visible = true
-		
+
 		Page.Sections = {}
-		
+
 		Page.Button.Activated:Connect(function()
 			Gui.SelectPage(Page)
 		end)
-		
+
 		Page.CreateSection = function(SectionName : string)
 			local Section = {}
 			Page.Sections[SectionName] = Section
-			
-			
+
+
 			Section.Name = SectionName
 			Section.Items = {}
-			
+
 			Section.CreateItem = function(ItemId : string)
-				local Item = {}
-				Section.Items[ItemId] = Item
-				
-				Item.Id = ItemId
-				
-				Item.SetType = function(Type : string, Data : {any})
-					Item.Type = Type
-					
-					Item.Data = Data
+				if table.find(Gui.TakenItemIds, ItemId) then
+					Gui.Notify("Error", "Item id is not unique!", 3)
+					return nil
 				end
 				
+				local Item = {}
+				Section.Items[ItemId] = Item
+				table.insert(Gui.TakenItemIds, ItemId)
+
+				Item.Id = ItemId
+
+				Item.SetType = function(Type : string, Data : {any})
+					Item.Type = Type
+
+					Item.Data = Data
+				end
+
 				return Item
 			end
-			
+
 			Section.RemoveItem = function(ItemId : string)
+				table.remove(Gui.TakenItemIds, table.find(Gui.TakenItemIds, ItemId))
 				Section.Items[ItemId] = nil
 			end
-			
+
 			return Section
 		end
-		
+
 		Page.RemoveSection = function(SectionName : string)
 			Page.Sections[SectionName] = nil
 		end
-		
+
 		Page.LoadSection = function(SectionName : string)
 			local Section = Page.Sections[SectionName]
-			
+
 			local NewSectionUi = CreateObjects.CreateSection(SectionName)
 			NewSectionUi.Parent = Gui.UI.MainPage.PageContents
-			
+
 			for ItemId, Item in pairs(Section.Items) do
-				local NewItem = CreateObjects.CreateItem(Item.Type)
-				
+				local NewItem = CreateObjects.CreateItem(((Item.Type == "TextLabel" or Item.Type == "ImageLabel") and "Label") or Item.Type)
+
 				if Item.Type == "Button" then
 					NewItem.Text = Item.Data.Text
 					NewItem.TextButton.Activated:Connect(Item.Data.OnClick)
 				elseif Item.Type == "Toggle" then
 					NewItem.Text = Item.Data.Text
-					
+
 					local function SetImage()
 						NewItem.ToggleImage.Image = Item.Data.Value and "http://www.roblox.com/asset/?id=6031068426" or "http://www.roblox.com/asset/?id=6031068433"
 					end
 					SetImage()
-					
+
 					NewItem.TextButton.Activated:Connect(function()
 						Item.Data.Value = not Item.Data.Value
-						
+
 						SetImage()
-						
+
 						Item.Data.OnToggle(Item.Data.Value)
 					end)
 				elseif Item.Type == "TextLabel" then
@@ -203,21 +261,27 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 				elseif Item.Type == "ImageLabel" then
 					NewItem.TextTransparency = 1
 					NewItem.Image.Image = Item.Data.Image
+					NewItem.Image.ScaleType = Item.Data.FitType or Enum.ScaleType.Stretch
 				elseif Item.Type == "Input" then
 					local TextBox: TextBox = NewItem.TextBox
 					NewItem.Text = Item.Data.Text
-					
-					TextBox.Text = Item.Data.Default
-					TextBox.Focused:Connect(Item.Data.OnFocus)
+
+					TextBox.Text = Item.Data.Content
+					if Item.Data.OnFocus then
+						TextBox.Focused:Connect(Item.Data.OnFocus)
+					end
 					TextBox.FocusLost:Connect(function(EnterPressed)
+						Item.Data.Content = TextBox.Text
 						if EnterPressed then
-							Item.Data.OnSubmit(TextBox.Text)
+							if Item.Data.OnSubmit then
+								Item.Data.OnSubmit(TextBox.Text)
+							end
 						else
-							
+
 						end
 					end)
 				end
-				
+
 				NewItem.Parent = NewSectionUi
 
 				NewItem.TextScaled = false
@@ -226,44 +290,58 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 		end
 
 		Gui.UI.PageSelection.Visible = true
-		
+
 		return Page
+	end
+	
+	Gui.GetItemValue = function(ItemId : string)
+		for _, Page in pairs(Gui.Pages) do
+			for _, Section in pairs(Page.Sections) do
+				for _, Item in pairs(Section.Items) do
+					if Item.Id == ItemId then
+						return Item.Data[TypeValues[Item.Type]]
+					end
+				end
+			end
+		end
+		
+		return nil
 	end
 	
 	Gui.RemovePage = function(PageName : string)
 		Gui.Pages[PageName].Button:Destroy()
 		Gui.Pages[PageName] = nil
-		
+
 		if Gui.CurrentPage == PageName then
 			Gui.SelectPage(1)
 		end
 	end
-	
+
 	Gui.LoadCurrentPage = function()
 		if not Gui.CurrentPage then return end
-		
+
 		local PageContents: ScrollingFrame = Gui.UI.MainPage.PageContents
-		
+
 		for _, Item in pairs(PageContents:GetChildren()) do
 			if Item:IsA("Frame") then
 				Item:Destroy()
 			end
 		end
-		
+
 		local Page = Gui.Pages[Gui.CurrentPage]
-		
+
 		for SectionName, Section in pairs(Page.Sections) do
 			Page.LoadSection(SectionName)
 		end
 	end
-	
+
 	Gui.SelectPage = function(Page : {}|number)
 		if typeof(Page) == "table" then
 			Page = Page
 		elseif typeof(Page) == "number" then
 			Page = Gui.Pages[GetKey(Gui.Pages, Page)]
 		end
-		
+
 		for _, Button: Instance? in pairs(Gui.UI.PageSelection.PageScroller:GetChildren()) do
 			if Button:IsA("TextButton") and Button ~= Page.Button then
 				Button:SetAttribute("Selected", false)
@@ -273,22 +351,22 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 
 		Page.Button:SetAttribute("Selected", true)
 		game:GetService("TweenService"):Create(Page.Button, TweenInfo.new(0.25), {TextColor3 = Theme.SelectedListItem}):Play()
-		
+
 		Gui.CurrentPage = Page.Name
 		Gui.LoadCurrentPage()
 	end
-	
+
 	Gui.ApplyTheme = function(Theme : {[string]: Color3}, Object : Instance)
 		Object = Object or Gui.ScreenGui
 		for _, Descendant: Instance? in pairs({Object, table.unpack(Object:GetDescendants())}) do
 			local BackgroundColor = Descendant:GetAttribute("ThemeBackgroundColor")
 			local ContentColor = Descendant:GetAttribute("ThemeContentColor")
 			local Color = Descendant:GetAttribute("ThemeColor")
-			
+
 			if ObjectHasProperty(Descendant, "Font") then
 				Descendant.Font = Theme.FontFace
 			end
-			
+
 			if BackgroundColor then
 				if ObjectHasProperty(Descendant, "BackgroundColor3") then
 					Descendant.BackgroundColor3 = Theme[BackgroundColor]
@@ -321,12 +399,25 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 			end
 		end
 	end
-	
+
 	Gui.ScreenGui.DescendantAdded:Connect(function()
 		Gui.ApplyTheme(Gui.Theme)
 	end)
 	Gui.LoadCurrentPage()
 	
+	for _, Descendant in pairs(Gui.ScreenGui:GetDescendants()) do
+		if Descendant:GetAttribute("Draggable") then
+			local Target = Descendant:GetAttribute("DragTarget")
+			if Target then
+				if Target == "Main" then
+					Gui.HandleDrag(Descendant, Gui.UI)
+				end
+			else
+				Gui.HandleDrag(Descendant)
+			end
+		end
+	end
+
 	return Gui
 end
 
@@ -490,6 +581,8 @@ CreateObjects.CreateMainGui = function(GuiTitle : string)
 	Object2.TextXAlignment = Enum.TextXAlignment.Left
 	-- <Attributes> --
 	Object2:SetAttribute([[ThemeContentColor]], [[MainText]])
+	Object2:SetAttribute([[Draggable]], true)
+	Object2:SetAttribute([[DragTarget]], [[Main]])
 
 
 	-- ['Main/UIGradient'] --
@@ -624,40 +717,6 @@ CreateObjects.CreateMainGui = function(GuiTitle : string)
 	Object13.Thickness = 2
 
 
-	-- ['Main/MinimizeButton'] --
-	local Object14 = Instance.new('TextButton')
-	-- <Properties> --
-	Object14.Text = [[_]]
-	Object14.TextColor3 = Color3.new(1, 1, 1)
-	Object14.TextScaled = true
-	Object14.TextSize = 14
-	Object14.TextWrapped = true
-	Object14.Name = [[MinimizeButton]]
-	Object14.Parent = Object0
-	Object14.BackgroundColor3 = Color3.new(1, 1, 1)
-	Object14.BackgroundTransparency = 1
-	Object14.Position = UDim2.new(0.881020367, 0, 0.0127388528, 0)
-	Object14.Size = UDim2.new(0.0476190485, 0, 0.0700636953, 0)
-	-- <Attributes> --
-	Object14:SetAttribute([[ThemeContentColor]], [[MainText]])
-
-
-	-- ['Main/MinimizeButton/UICorner'] --
-	local Object15 = Instance.new('UICorner')
-	-- <Properties> --
-	Object15.Parent = Object14
-	Object15.CornerRadius = UDim.new(0.300000012, 0)
-
-
-	-- ['Main/MinimizeButton/UIStroke'] --
-	local Object16 = Instance.new('UIStroke')
-	-- <Properties> --
-	Object16.Parent = Object14
-	Object16.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	Object16.Color = Color3.new(1, 1, 1)
-	Object16.Thickness = 2
-
-
 	-- << Sets Base Object's Parent >> --
 	Object0.Parent = BaseParent
 
@@ -690,7 +749,7 @@ CreateObjects.CreateSection = function(SectionName : string)
 
 	-- << Sets Base Object's Parent >> --
 	Object0.Parent = BaseParent
-	
+
 	local function deserialize()
 		-- << Base Object Parent (eg. game.StarterGui, game.Workspace, ...) >> --
 		local BaseParent = Object0
@@ -738,9 +797,9 @@ CreateObjects.CreateSection = function(SectionName : string)
 
 		return Object0
 	end
-	
+
 	deserialize()
-	
+
 	return Object0
 end
 
@@ -1015,7 +1074,7 @@ CreateObjects.CreateItem = function(ItemType : string)
 
 		return Object0
 	end
-	
+
 	return nil
 end
 
