@@ -63,7 +63,7 @@ local TypeValues = {
 
 local CreateObjects = {}
 
-local function GetKey(Table : {any}, Index : number)
+local function GetKey(Table, Index)
 	local Iterations = 0
 
 	for Key, Value in pairs(Table) do
@@ -75,13 +75,13 @@ local function GetKey(Table : {any}, Index : number)
 	end
 end
 
-local function ObjectHasProperty(Object : Instance, PropertyName : string)
+local function ObjectHasProperty(Object, PropertyName)
 	return pcall(function()
 		return Object[PropertyName]
 	end)
 end
 
-function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
+function Library.new(GuiName, Theme, Parent)
 	local Mouse = game.Players.LocalPlayer:GetMouse()
 	local Mouse1Down = false
 
@@ -121,7 +121,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 		Gui.ScreenGui:Destroy()
 	end)
 	
-	Gui.HandleDrag = function(Object : GuiObject, Target : GuiObject?)
+	Gui.HandleDrag = function(Object, Target)
 		Target = Target or Object
 		
 		local InUI = false
@@ -149,7 +149,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 		end)
 	end
 
-	Gui.Notify = function(Title : string, Description : string, Duration : number?)
+	Gui.Notify = function(Title, Description, Duration)
 		Duration = Duration or #Title / 2
 
 		local Notification = CreateObjects.CreateNotification()
@@ -171,7 +171,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 		end)
 	end
 
-	Gui.CreatePage = function(PageName : string)
+	Gui.CreatePage = function(PageName)
 		local Page = {}
 		Gui.Pages[PageName] = Page
 
@@ -188,7 +188,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 			Gui.SelectPage(Page)
 		end)
 
-		Page.CreateSection = function(SectionName : string)
+		Page.CreateSection = function(SectionName)
 			local Section = {}
 			Page.Sections[SectionName] = Section
 
@@ -196,7 +196,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 			Section.Name = SectionName
 			Section.Items = {}
 
-			Section.CreateItem = function(ItemId : string)
+			Section.CreateItem = function(ItemId)
 				if table.find(Gui.TakenItemIds, ItemId) then
 					Gui.Notify("Error", "Item id is not unique!", 3)
 					return nil
@@ -208,7 +208,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 
 				Item.Id = ItemId
 
-				Item.SetType = function(Type : string, Data : {any})
+				Item.SetType = function(Type, Data)
 					Item.Type = Type
 
 					Item.Data = Data
@@ -217,7 +217,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 				return Item
 			end
 
-			Section.RemoveItem = function(ItemId : string)
+			Section.RemoveItem = function(ItemId)
 				table.remove(Gui.TakenItemIds, table.find(Gui.TakenItemIds, ItemId))
 				Section.Items[ItemId] = nil
 			end
@@ -225,11 +225,11 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 			return Section
 		end
 
-		Page.RemoveSection = function(SectionName : string)
+		Page.RemoveSection = function(SectionName)
 			Page.Sections[SectionName] = nil
 		end
 
-		Page.LoadSection = function(SectionName : string)
+		Page.LoadSection = function(SectionName)
 			local Section = Page.Sections[SectionName]
 
 			local NewSectionUi = CreateObjects.CreateSection(SectionName)
@@ -263,7 +263,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 					NewItem.Image.Image = Item.Data.Image
 					NewItem.Image.ScaleType = Item.Data.FitType or Enum.ScaleType.Stretch
 				elseif Item.Type == "Input" then
-					local TextBox: TextBox = NewItem.TextBox
+					local TextBox = NewItem.TextBox
 					NewItem.Text = Item.Data.Text
 
 					TextBox.Text = Item.Data.Content
@@ -294,7 +294,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 		return Page
 	end
 	
-	Gui.GetItemValue = function(ItemId : string)
+	Gui.GetItemValue = function(ItemId)
 		for _, Page in pairs(Gui.Pages) do
 			for _, Section in pairs(Page.Sections) do
 				for _, Item in pairs(Section.Items) do
@@ -308,7 +308,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 		return nil
 	end
 	
-	Gui.RemovePage = function(PageName : string)
+	Gui.RemovePage = function(PageName)
 		Gui.Pages[PageName].Button:Destroy()
 		Gui.Pages[PageName] = nil
 
@@ -320,7 +320,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 	Gui.LoadCurrentPage = function()
 		if not Gui.CurrentPage then return end
 
-		local PageContents: ScrollingFrame = Gui.UI.MainPage.PageContents
+		local PageContents = Gui.UI.MainPage.PageContents
 
 		for _, Item in pairs(PageContents:GetChildren()) do
 			if Item:IsA("Frame") then
@@ -335,7 +335,7 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 		end
 	end
 
-	Gui.SelectPage = function(Page : {}|number)
+	Gui.SelectPage = function(Page)
 		if typeof(Page) == "table" then
 			Page = Page
 		elseif typeof(Page) == "number" then
@@ -356,9 +356,9 @@ function Library.new(GuiName : string, Theme : {any}, Parent : Instance?)
 		Gui.LoadCurrentPage()
 	end
 
-	Gui.ApplyTheme = function(Theme : {[string]: Color3}, Object : Instance)
+	Gui.ApplyTheme = function(Theme, Object)
 		Object = Object or Gui.ScreenGui
-		for _, Descendant: Instance? in pairs({Object, table.unpack(Object:GetDescendants())}) do
+		for _, Descendant in pairs({Object, table.unpack(Object:GetDescendants())}) do
 			local BackgroundColor = Descendant:GetAttribute("ThemeBackgroundColor")
 			local ContentColor = Descendant:GetAttribute("ThemeContentColor")
 			local Color = Descendant:GetAttribute("ThemeColor")
