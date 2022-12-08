@@ -342,7 +342,7 @@ function Library.new(GuiName, Theme, Parent)
 			Page = Gui.Pages[GetKey(Gui.Pages, Page)]
 		end
 
-		for _, Button: Instance? in pairs(Gui.UI.PageSelection.PageScroller:GetChildren()) do
+		for _, Button in pairs(Gui.UI.PageSelection.PageScroller:GetChildren()) do
 			if Button:IsA("TextButton") and Button ~= Page.Button then
 				Button:SetAttribute("Selected", false)
 				game:GetService("TweenService"):Create(Button, TweenInfo.new(0.25), {TextColor3 = Theme.UnselectedListItem}):Play()
