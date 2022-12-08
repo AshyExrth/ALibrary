@@ -99,6 +99,11 @@ local ImageLabel = Item.SetType("ImageLabel", { -- Image Label
 })
 ```
 
+You can get the value of a specific item using
+```lua
+Gui.GetItemValue(ItemId)
+```
+
 # Notifications
 
 You can send notifications using
