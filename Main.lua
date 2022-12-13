@@ -187,11 +187,10 @@ function Library.new(GuiName, Theme, Parent, SaveData, SaveFileLocation)
 
 	Gui.UI.ExitButton.Activated:Connect(function()
 		Gui.ScreenGui:Destroy()
-		Gui.Closed:Fire()
 	end)
 	
-	game:BindToClose(function()
-		Gui.Closed:Fire()
+	Gui.ScreenGui.Destroying:Connect(function()
+		Gui.Closed:Fire()	
 	end)
 
 	Gui.SelectColor = function(Default)
