@@ -63,6 +63,14 @@ local TypeValues = {
 
 local CreateObjects = {}
 
+local function getLength(Table)
+	local Idx = 0
+	for i, _ in ipairs(Table) do
+		Idx += 1
+	end
+	return Idx
+end
+
 local function MakeTableJSonSavable(Table)
 	local NewTable = {}
 	
@@ -190,7 +198,7 @@ function Library.new(GuiName, Theme, Parent, SaveData, SaveFileLocation)
 	end)
 	
 	Gui.ScreenGui.Destroying:Connect(function()
-		Gui.Closed:Fire()	
+		Gui.Closed:Fire()
 	end)
 
 	Gui.SelectColor = function(Default)
@@ -422,9 +430,12 @@ function Library.new(GuiName, Theme, Parent, SaveData, SaveFileLocation)
 
 		Page.Button.Text = PageName
 		Page.Button.Visible = true
+		Page.Order = getLength(Gui.Pages)
 
 		Page.Sections = {}
-
+		
+		Page.Button.LayoutOrder = Page.Order
+		
 		Page.Button.Activated:Connect(function()
 			Gui.SelectPage(Page)
 		end)
@@ -432,10 +443,10 @@ function Library.new(GuiName, Theme, Parent, SaveData, SaveFileLocation)
 		Page.CreateSection = function(SectionName)
 			local Section = {}
 			Page.Sections[SectionName] = Section
-
-
+			
 			Section.Name = SectionName
 			Section.Items = {}
+			Section.Order = getLength(Page.Sections)
 
 			Section.CreateItem = function(ItemId)
 				if table.find(Gui.TakenItemIds, ItemId) then
@@ -448,6 +459,7 @@ function Library.new(GuiName, Theme, Parent, SaveData, SaveFileLocation)
 				table.insert(Gui.TakenItemIds, ItemId)
 
 				Item.Id = ItemId
+				Item.Order = getLength(Section.Items)
 
 				Item.SetType = function(Type, Data)
 					Item.Type = Type
@@ -476,10 +488,14 @@ function Library.new(GuiName, Theme, Parent, SaveData, SaveFileLocation)
 
 			local NewSectionUi = CreateObjects.CreateSection(SectionName)
 			NewSectionUi.Parent = Gui.UI.MainPage.PageContents
+			
+			NewSectionUi.LayoutOrder = Section.Order
 
 			for ItemId, Item in pairs(Section.Items) do
 				local NewItem = CreateObjects.CreateItem(((Item.Type == "TextLabel" or Item.Type == "ImageLabel") and "Label") or Item.Type)
-
+				
+				NewItem.LayoutOrder = Item.Order
+				
 				if Item.Type == "Button" then
 					NewItem.Text = Item.Data.Text
 					NewItem.TextButton.Activated:Connect(Item.Data.OnClick)
